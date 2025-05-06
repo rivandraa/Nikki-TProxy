@@ -109,10 +109,18 @@ return baseclass.extend({
     },
 
     api: async function (method, path, query, body) {
-        const profile = await callNikkiProfile({ 'external-controller': null, 'secret': null });
+        const profile = await callNikkiProfile({
+            'external-controller': null,
+            'secret': null
+        });
     
-        const apiListen = profile && profile['external-controller'] ? profile['external-controller'] : '127.0.0.1:9090';
-        const apiSecret = profile && profile['secret'] ? profile['secret'] : '';
+        const apiListen = profile['external-controller'];
+        const apiSecret = profile['secret'] || '';
+    
+        if (!apiListen) {
+            console.error("Failed to call API: 'external-controller' not found in the configuration.");
+            return;
+        }
     
         const apiPort = apiListen.substring(apiListen.lastIndexOf(':') + 1);
         const url = `http://${window.location.hostname}:${apiPort}${path}`;
@@ -132,9 +140,14 @@ return baseclass.extend({
             'secret': null
         });
     
-        const uiName = profile && profile['external-ui-name'] ? profile['external-ui-name'] : '';
-        const apiListen = profile && profile['external-controller'] ? profile['external-controller'] : '127.0.0.1:9090';
-        const apiSecret = profile && profile['secret'] ? profile['secret'] : '';
+        const uiName = profile['external-ui-name'];
+        const apiListen = profile['external-controller'];
+        const apiSecret = profile['secret'] || '';
+    
+        if (!apiListen) {
+            console.error('Failed to open dashboard: external-controller not found in the configuration.');
+            return;
+        }
     
         const apiPort = apiListen.substring(apiListen.lastIndexOf(':') + 1);
     
