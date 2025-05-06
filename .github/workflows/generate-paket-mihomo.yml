@@ -3,6 +3,9 @@ name: Generate PKG Info update
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write  # penting agar GITHUB_TOKEN bisa push
+
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -29,7 +32,7 @@ jobs:
 
       - name: Cek dan edit Makefile
         run: |
-          MAKEFILE=nikki/Makefile  # Ganti sesuai path yang benar
+          MAKEFILE=nikki/Makefile
           echo "--- CEK FILE ---"
           ls -lah "$MAKEFILE"
           echo "--- ISI AWAL ---"
@@ -39,24 +42,24 @@ jobs:
           sed -i "s/^ *PKG_SOURCE_VERSION *:= *.*/PKG_SOURCE_VERSION:=${COMMIT}/" "$MAKEFILE"
           sed -i "s/^ *PKG_MIRROR_HASH *:= *.*/PKG_MIRROR_HASH:=${HASH}/" "$MAKEFILE"
           sed -i "s/^ *PKG_BUILD_VERSION *:= *.*/PKG_BUILD_VERSION:=${VERSION}/" "$MAKEFILE"
-      
-          #Modify Makefile to update PKG_BUILD_VERSION
-          sed -i 's/^PKG_BUILD_VERSION:=Prerelease-\(Alpha-[a-z0-9]*\)/PKG_BUILD_VERSION:=\1/' nikki/Makefile
-          cat nikki/Makefile  # Untuk memastikan perubahan berhasil
+          sed -i 's/^PKG_BUILD_VERSION:=Prerelease-\(Alpha-[a-z0-9]*\)/PKG_BUILD_VERSION:=\1/' "$MAKEFILE"
 
           echo "--- ISI SETELAH EDIT ---"
           cat "$MAKEFILE"
 
       - name: Commit and push updated Makefile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Your Name"
+          git config user.email "you@example.com"
+          git config user.name "Your Name"
+
           git add nikki/Makefile
-      
-          # Commit hanya jika ada perubahan
+
           if git diff --cached --quiet; then
             echo "Tidak ada perubahan, tidak melakukan commit."
           else
             git commit -m "Update Makefile after workflow run"
-            git push
+            git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+            git push origin HEAD
           fi
