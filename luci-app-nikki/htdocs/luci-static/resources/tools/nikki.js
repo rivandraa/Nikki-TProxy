@@ -84,7 +84,8 @@ return baseclass.extend({
     reservedIP6NFT: reservedIP6NFT,
 
     status: async function () {
-        return (await callRCList('nikki'))?.nikki?.running;
+        const res = await callRCList('nikki');
+        return res && res.nikki ? res.nikki.running : undefined;
     },
 
     reload: function () {
@@ -109,24 +110,34 @@ return baseclass.extend({
 
     api: async function (method, path, query, body) {
         const profile = await callNikkiProfile({ 'external-controller': null, 'secret': null });
-        const apiListen = profile['external-controller'];
-        const apiSecret = profile['secret'] ?? '';
+    
+        const apiListen = profile && profile['external-controller'] ? profile['external-controller'] : '127.0.0.1:9090';
+        const apiSecret = profile && profile['secret'] ? profile['secret'] : '';
+    
         const apiPort = apiListen.substring(apiListen.lastIndexOf(':') + 1);
         const url = `http://${window.location.hostname}:${apiPort}${path}`;
+    
         return request.request(url, {
             method: method,
             headers: { 'Authorization': `Bearer ${apiSecret}` },
             query: query,
             content: body
-        })
+        });
     },
 
     openDashboard: async function () {
-        const profile = await callNikkiProfile({ 'external-ui-name': null, 'external-controller': null, 'secret': null });
-        const uiName = profile['external-ui-name'];
-        const apiListen = profile['external-controller'];
-        const apiSecret = profile['secret'] ?? '';
+        const profile = await callNikkiProfile({
+            'external-ui-name': null,
+            'external-controller': null,
+            'secret': null
+        });
+    
+        const uiName = profile && profile['external-ui-name'] ? profile['external-ui-name'] : '';
+        const apiListen = profile && profile['external-controller'] ? profile['external-controller'] : '127.0.0.1:9090';
+        const apiSecret = profile && profile['secret'] ? profile['secret'] : '';
+    
         const apiPort = apiListen.substring(apiListen.lastIndexOf(':') + 1);
+    
         const params = {
             host: window.location.hostname,
             hostname: window.location.hostname,
@@ -134,13 +145,14 @@ return baseclass.extend({
             secret: apiSecret
         };
         const query = new URLSearchParams(params).toString();
-        let url;
-        if (uiName) {
-            url = `http://${window.location.hostname}:${apiPort}/ui/${uiName}/?${query}`;
-        } else {
-            url = `http://${window.location.hostname}:${apiPort}/ui/?${query}`;
-        }
-        setTimeout(function () { window.open(url, '_blank') }, 0);
+    
+        const url = uiName
+            ? `http://${window.location.hostname}:${apiPort}/ui/${uiName}/?${query}`
+            : `http://${window.location.hostname}:${apiPort}/ui/?${query}`;
+    
+        setTimeout(function () {
+            window.open(url, '_blank');
+        }, 0);
     },
 
     updateDashboard: function () {
