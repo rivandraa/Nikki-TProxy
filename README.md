@@ -97,8 +97,6 @@ The package files will be found under `bin/packages/your_architecture/nikki`.
 
 ## Contributors
 
-[![Contributors](https://contrib.rocks/image?repo=nikkinikki-org/OpenWrt-nikki)](https://github.com/nikkinikki-org/OpenWrt-nikki/graphs/contributors)
-
 ## Special Thanks
 
 - [@ApoisL](https://github.com/apoiston)
