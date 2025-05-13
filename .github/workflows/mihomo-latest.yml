@@ -1,4 +1,4 @@
-name: Generate PKG Info update
+name: Generate Core Mihomo Info update
 
 on:
   workflow_dispatch:
