@@ -8,6 +8,9 @@ on:
         required: true
         default: "latest"
 
+permissions:
+  contents: write  # penting agar GITHUB_TOKEN bisa push
+
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -71,14 +74,18 @@ jobs:
           cat "$MAKEFILE"
 
       - name: Commit and push updated Makefile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Your Name"
+          git config user.email "you@example.com"
+          git config user.name "Your Name"
+
           git add nikki/Makefile
 
           if git diff --cached --quiet; then
             echo "Tidak ada perubahan, tidak melakukan commit."
           else
-            git commit -m "Update Makefile after $RELEASE_TYPE release"
-            git push
+            git commit -m "Update Makefile after workflow run"
+            git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+            git push origin HEAD
           fi
