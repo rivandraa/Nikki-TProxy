@@ -51,6 +51,17 @@ start_service() {
 	config_get_bool test_profile "config" "test_profile" 0
 	config_get_bool fast_reload "config" "fast_reload" 0
 	## mixin config
+	### overwrite
+	local overwrite_authentication overwrite_tun_dns_hijack overwrite_fake_ip_filter overwrite_hosts overwrite_dns_nameserver overwrite_dns_nameserver_policy overwrite_sniffer_sniff overwrite_sniffer_force_domain_name overwrite_sniffer_ignore_domain_name
+	config_get_bool overwrite_authentication "mixin" "authentication" 0
+	config_get_bool overwrite_tun_dns_hijack "mixin" "tun_dns_hijack" 0
+	config_get_bool overwrite_fake_ip_filter "mixin" "fake_ip_filter" 0
+	config_get_bool overwrite_hosts "mixin" "hosts" 0
+	config_get_bool overwrite_dns_nameserver "mixin" "dns_nameserver" 0
+	config_get_bool overwrite_dns_nameserver_policy "mixin" "dns_nameserver_policy" 0
+	config_get_bool overwrite_sniffer_force_domain_name "mixin" "sniffer_force_domain_name" 0
+	config_get_bool overwrite_sniffer_ignore_domain_name "mixin" "sniffer_ignore_domain_name" 0
+	config_get_bool overwrite_sniffer_sniff "mixin" "sniffer_sniff" 0
 	### mixin file content
 	local mixin_file_content
 	config_get_bool mixin_file_content "mixin" "mixin_file_content" 0
@@ -94,6 +105,33 @@ start_service() {
 	fi
 	# mixin
 	log "Mixin" "Mixin config."
+	if [ "$overwrite_authentication" == 1 ]; then
+		yq -M -i 'del(.authentication)' "$RUN_PROFILE_PATH"
+	fi
+	if [ "$overwrite_tun_dns_hijack" == 1 ]; then
+		yq -M -i 'del(.tun.dns-hijack)' "$RUN_PROFILE_PATH"
+	fi
+	if [ "$overwrite_fake_ip_filter" == 1 ]; then
+		yq -M -i 'del(.dns.fake-ip-filter)' "$RUN_PROFILE_PATH"
+	fi
+	if [ "$overwrite_hosts" == 1 ]; then
+		yq -M -i 'del(.hosts)' "$RUN_PROFILE_PATH"
+	fi
+	if [ "$overwrite_dns_nameserver" == 1 ]; then
+		yq -M -i 'del(.dns.default-nameserver) | del(.dns.proxy-server-nameserver) | del(.dns.direct-nameserver) | del(.dns.nameserver) | del(.dns.fallback) ' "$RUN_PROFILE_PATH"
+	fi
+	if [ "$overwrite_dns_nameserver_policy" == 1 ]; then
+		yq -M -i 'del(.dns.nameserver-policy)' "$RUN_PROFILE_PATH"
+	fi
+	if [ "$overwrite_sniffer_force_domain_name" == 1 ]; then
+		yq -M -i 'del(.sniffer.force-domain)' "$RUN_PROFILE_PATH"
+	fi
+	if [ "$overwrite_sniffer_ignore_domain_name" == 1 ]; then
+		yq -M -i 'del(.sniffer.skip-domain)' "$RUN_PROFILE_PATH"
+	fi
+	if [ "$overwrite_sniffer_sniff" == 1 ]; then
+		yq -M -i 'del(.sniffer.sniff)' "$RUN_PROFILE_PATH"
+	fi
 	if [ "$mixin_file_content" == 0 ]; then
 		ucode -S "$MIXIN_UC" | yq -M -p json -o yaml | yq -M -i ea '... comments="" | . as $item ireduce ({}; . * $item ) | .rules = .nikki-rules + .rules | del(.nikki-rules)' "$RUN_PROFILE_PATH" -
 	elif [ "$mixin_file_content" == 1 ]; then
