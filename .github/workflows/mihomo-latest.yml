@@ -26,29 +26,34 @@ jobs:
       - name: Clone Mihomo dan buat archive
         run: |
           RELEASE_TYPE="${{ github.event.inputs.release_type }}"
-
+      
           if [ "$RELEASE_TYPE" = "latest" ]; then
             TAG=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r .tag_name)
           else
-            # Ambil prerelease terbaru
             TAG=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
               | jq -r '.[] | select(.prerelease) | .tag_name' | head -n1)
           fi
-
+      
           echo "Menggunakan tag: $TAG"
-
+      
           git clone https://github.com/MetaCubeX/mihomo.git
           cd mihomo
           git checkout "$TAG"
-
+      
           COMMIT=$(git rev-parse HEAD)
           DATE=$(git log -1 --format=%cd --date=format:'%Y-%m-%d')
-          VERSION=${TAG}-${COMMIT:0:8}
+      
+          if [ "$RELEASE_TYPE" = "latest" ]; then
+            VERSION=${TAG}
+          else
+            VERSION=${TAG}-${COMMIT:0:8}
+          fi
+      
           ARCHIVE_NAME=mihomo-${DATE}~${COMMIT:0:8}
-
+      
           git archive --format=tar --prefix="${ARCHIVE_NAME}/" HEAD | zstd -19 -o "../${ARCHIVE_NAME}.tar.zst"
           HASH=$(sha256sum "../${ARCHIVE_NAME}.tar.zst" | cut -d ' ' -f1)
-
+      
           echo "DATE=$DATE" >> $GITHUB_ENV
           echo "COMMIT=$COMMIT" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_ENV
