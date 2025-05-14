@@ -1,0 +1,60 @@
+name: build-new-kunci
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.arch }}-${{ matrix.branch }} build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - aarch64_generic
+        branch:
+          - openwrt-24.10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install Go for license generation
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      # Generate license key for the device (simulated device hash here)
+      - name: Generate license key
+        run: |
+          echo "Generating license key..."
+          DEVICE_HASH="sample-device-hash-12345678"  # replace with actual device hash logic
+          go run license-gen.go generate $DEVICE_HASH
+          mkdir -p files/nikki
+          mv license_${DEVICE_HASH:0:8}.key files/nikki/license.key
+
+      # Build package with OpenWrt
+      - name: Build package
+        uses: openwrt/gh-action-sdk@main
+        env:
+          ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
+          FEEDNAME: nikki
+          PACKAGES: luci-app-nikki
+          NO_REFRESH_CHECK: true
+
+      # Compress .ipk files and add the generated license.key
+      - name: Compress .ipk files
+        run: |
+          mkdir -p output
+          cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
+          # Assuming the license key should be included in the ipk package or delivered separately
+          cp files/nikki/license.key output/
+          zip -r Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}.zip output/
+
+      # Upload to artifact
+      - name: Upload to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}
+          path: Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}.zip
