@@ -1,4 +1,4 @@
-name: release-packages-new
+name: release-packages-test
 
 on:
   workflow_dispatch:
