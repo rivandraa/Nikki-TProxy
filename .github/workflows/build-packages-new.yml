@@ -31,10 +31,10 @@ jobs:
         run: |
           mkdir -p output
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
-          zip -j Nikki-TProxy_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
+          zip -j Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
 
       - name: Upload to artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nikki-TProxy_${{ matrix.arch }}-${{ matrix.branch }}
-          path: Nikki-TProxy_${{ matrix.arch }}-${{ matrix.branch }}.zip
+          name: Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}
+          path: Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}.zip
