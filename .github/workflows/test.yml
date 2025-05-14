@@ -56,16 +56,31 @@ jobs:
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
           zip -j Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
 
+      - name: Debug Git Configuration
+        run: |
+          echo "Checking Git configuration..."
+          git config --list
+          git branch -a
+          git status
+
       - name: Create empty commit and tag
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git fetch origin
           git checkout main
+          
+          # Debug for existing tag
+          TAG_NAME="Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists. Deleting it..."
+            git tag -d "$TAG_NAME"
+            git push --delete origin "$TAG_NAME" || true
+          fi
+
           git checkout --orphan temp-release-branch
           git rm -rf .
-          git commit --allow-empty -m "Release: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
-          TAG_NAME="Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          git commit --allow-empty -m "Release: $TAG_NAME"
           git tag -a "$TAG_NAME" -m "Version ${{ steps.extract_version.outputs.version }}"
           git push origin "$TAG_NAME"
           git checkout main
