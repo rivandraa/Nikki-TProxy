@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=nikki
 PKG_RELEASE:=1
 # PKG_VERSION otomatis dibentuk dari tanggal dan hash commit + suffix "-Mod"
-PKG_VERSION := $(PKG_SOURCE_DATE)~$(call version_abbrev,$(PKG_SOURCE_VERSION))-Mod
+PKG_VERSION := $(subst -,.,$(PKG_SOURCE_DATE))~$(call version_abbrev,$(PKG_SOURCE_VERSION))-Mod
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
