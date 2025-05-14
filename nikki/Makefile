@@ -9,21 +9,19 @@ PKG_SOURCE_DATE:=2025-05-13
 PKG_SOURCE_VERSION:=266fb03838365bb5df14d7531476514427eba2e4
 PKG_MIRROR_HASH:=b17102d5ecd72fa05011eb2776500497e735225b811cdc5cd9697a6e85a953f8
 
-# PKG_VERSION dibentuk dari tanggal + hash commit yang sudah disingkat + suffix -Mod
-PKG_VERSION := $(subst -,.,$(PKG_SOURCE_DATE))~$(call version_abbrev,$(PKG_SOURCE_VERSION))-Mod
-
-PKG_LICENSE:=GPL-3.0+
+PKG_LICENSE:=GPL3.0+
 PKG_MAINTAINER:=***
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
-PKG_BUILD_VERSION:=v1.19.8-$(call version_abbrev,$(PKG_SOURCE_VERSION))
+PKG_BUILD_VERSION:=v1.19.8-266fb038
 PKG_BUILD_TIME:=$(shell date -u -Iseconds)
+PKG_VERSION:=$(PKG_SOURCE_DATE)~$(PKG_BUILD_VERSION)-Mod
 
 GO_PKG:=github.com/metacubex/mihomo
-GO_PKG_LDFLAGS_X:=\
+GO_PKG_LDFLAGS_X:= \
 	$(GO_PKG)/constant.Version=$(PKG_BUILD_VERSION) \
 	$(GO_PKG)/constant.BuildTime=$(PKG_BUILD_TIME)
 GO_PKG_TAGS:=with_gvisor
@@ -36,7 +34,8 @@ define Package/nikki
   CATEGORY:=Network
   TITLE:=A rule based proxy in Go.
   URL:=https://wiki.metacubex.one
-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +curl +yq firewall4 +ip-full +kmod-inet-diag +kmod-nft-socket +kmod-nft-tproxy +kmod-tun
+  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +curl +yq firewall4 +ip-full \
+           +kmod-inet-diag +kmod-nft-socket +kmod-nft-tproxy +kmod-tun
   PROVIDES:=nikki mihomo
 endef
 
@@ -54,7 +53,16 @@ endef
 define Package/nikki/install
 	$(call GoPackage/Package/Install/Bin,$(1))
 
-	$(INSTALL_DIR) $(1)/etc/nikki/{ucode,scripts,nftables,profiles,subscriptions,run/providers/{rule,proxy}}
+	$(INSTALL_DIR) $(1)/etc/nikki \
+	               $(1)/etc/nikki/ucode \
+	               $(1)/etc/nikki/scripts \
+	               $(1)/etc/nikki/nftables \
+	               $(1)/etc/nikki/profiles \
+	               $(1)/etc/nikki/subscriptions \
+	               $(1)/etc/nikki/run \
+	               $(1)/etc/nikki/run/providers \
+	               $(1)/etc/nikki/run/providers/rule \
+	               $(1)/etc/nikki/run/providers/proxy
 
 	$(INSTALL_DATA) $(CURDIR)/files/mixin.yaml $(1)/etc/nikki/mixin.yaml
 
@@ -81,10 +89,12 @@ endef
 
 define Package/nikki/postrm
 #!/bin/sh
+# Hanya dijalankan jika bukan dalam proses image build (chroot)
 if [ -z "$$IPKG_INSTROOT" ]; then
-    uci -q delete firewall.nikki
-    uci -q commit firewall
+	uci -q delete firewall.nikki
+	uci -q commit firewall
 fi
+
 rm -rf /etc/nikki
 rm -rf /www/luci-static/resources/view/nikki
 rm -rf /tmp/log/nikki
