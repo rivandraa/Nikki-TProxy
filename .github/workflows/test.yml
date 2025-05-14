@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # dibutuhkan untuk membuat dan mengupload release
+  contents: write  # Dibutuhkan untuk membuat dan mengupload release
 
 jobs:
   build:
@@ -58,14 +58,18 @@ jobs:
 
       - name: Create empty commit and tag
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
           git fetch origin
+          git checkout main
           git checkout --orphan temp-release-branch
           git rm -rf .
-          git commit --allow-empty -m "Empty commit for release"
-          git tag Nikki-TProxy-${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
-          git push origin Nikki-TProxy-${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
+          git commit --allow-empty -m "Release: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          TAG_NAME="Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          git tag -a "$TAG_NAME" -m "Version ${{ steps.extract_version.outputs.version }}"
+          git push origin "$TAG_NAME"
+          git checkout main
+          git branch -D temp-release-branch
 
       - name: Create GitHub Release
         id: create_release
@@ -73,8 +77,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
-          release_name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}
+          tag_name: "Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          release_name: "Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
           draft: false
           prerelease: false
 
@@ -84,6 +88,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: Nikki-TProxy-${{ matrix.arch }}-${{ matrix.branch }}.zip
-          asset_name: Nikki-TProxy-${{ matrix.arch }}-${{ matrix.branch }}.zip
+          asset_path: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
+          asset_name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
           asset_content_type: application/zip
