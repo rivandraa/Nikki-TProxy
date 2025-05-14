@@ -27,14 +27,24 @@ jobs:
           PACKAGES: luci-app-nikki
           NO_REFRESH_CHECK: true
 
+      - name: Extract package version
+        id: extract_version
+        run: |
+          PKG_FILE=$(find bin/packages/${{ matrix.arch }}/nikki -name 'nikki_*.ipk' | head -n 1)
+          echo "PKG_FILE=$PKG_FILE"
+          # Extract version: nikki_1.22.3-Mod-r1_aarch64_generic.ipk → 1.22.3-Mod-r1
+          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_(.+)_.*\.ipk/\1/')
+          echo "VERSION=$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Compress .ipk files
         run: |
           mkdir -p output
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
-          zip -j Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
+          zip -j Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
 
       - name: Upload to artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}
-          path: Nikki-TProxy-Mod_${{ matrix.arch }}-${{ matrix.branch }}.zip
+          name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}
+          path: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
