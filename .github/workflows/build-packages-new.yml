@@ -30,11 +30,15 @@ jobs:
       - name: Extract package version
         id: extract_version
         run: |
+          set -e
           PKG_FILE=$(find bin/packages/${{ matrix.arch }}/nikki -name 'nikki_*.ipk' | head -n 1)
-          echo "PKG_FILE=$PKG_FILE"
-          # Extract version: nikki_1.22.3-Mod-r1_aarch64_generic.ipk → 1.22.3-Mod-r1
-          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_(.+)_.*\.ipk/\1/')
-          echo "VERSION=$VERSION"
+          if [[ -z "$PKG_FILE" ]]; then
+            echo "❌ Package file not found!"
+            exit 1
+          fi
+          echo "Found package: $PKG_FILE"
+          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/')
+          echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Compress .ipk files
