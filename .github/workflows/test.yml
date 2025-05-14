@@ -1,4 +1,4 @@
-name: release-packages-test
+name: release-packages-new
 
 on:
   workflow_dispatch:
@@ -44,23 +44,17 @@ jobs:
           echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Compress .ipk files
-        run: |
-          mkdir -p output
-          cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
-          zip -j Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
-		  
       - name: Upload raw artifacts (optional)
         uses: actions/upload-artifact@v4
         with:
-          name: nikki_${{ matrix.arch }}-${{ matrix.branch }}
+          name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}
           path: bin/packages/${{ matrix.arch }}/nikki
 
       - name: Compress .ipk files
         run: |
           mkdir -p output
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
-          zip -j nikki_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
+          zip -j Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
 
       - name: Create empty commit and tag
         run: |
@@ -70,8 +64,8 @@ jobs:
           git checkout --orphan temp-release-branch
           git rm -rf .
           git commit --allow-empty -m "Empty commit for release"
-          git tag nikki-${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
-          git push origin nikki-${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
+          git tag Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
+          git push origin Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
 
       - name: Create GitHub Release
         id: create_release
@@ -79,7 +73,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}
+          tag_name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
           release_name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}
           draft: false
           prerelease: false
