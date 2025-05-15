@@ -1,10 +1,7 @@
-name: build-packages-new
+name: rilis-packages-new
 
 on:
   workflow_dispatch:
-
-permissions:
-  contents: write  # Diperlukan untuk membuat GitHub Release
 
 jobs:
   build:
@@ -40,41 +37,31 @@ jobs:
             exit 1
           fi
           echo "Found package: $PKG_FILE"
-          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/' | sed 's/~/-/g')
+          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/')
           echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Compress .ipk files
+        id: compress
         run: |
           mkdir -p output
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
-          ZIP_NAME=Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
-          zip -j "$ZIP_NAME" output/*.ipk
-          echo "zip_name=$ZIP_NAME" >> $GITHUB_ENV
+          TODAY=$(date +'%Y-%m-%d')
+          FILENAME=Nikki-TProxy-${TODAY}-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
+          zip -j "$FILENAME" output/*.ipk
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
 
       - name: Upload to artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}
-          path: ${{ env.zip_name }}
+          name: ${{ steps.compress.outputs.filename }}
+          path: ${{ steps.compress.outputs.filename }}
 
       - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.compress.outputs.filename }}
+          tag_name: ${{ steps.compress.outputs.filename }}
+          files: ${{ steps.compress.outputs.filename }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.extract_version.outputs.version }}
-          release_name: Nikki TProxy ${{ steps.extract_version.outputs.version }}
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ env.zip_name }}
-          asset_name: ${{ env.zip_name }}
-          asset_content_type: application/zip
