@@ -70,8 +70,12 @@ jobs:
           git fetch origin
           git checkout main
           
-          # Debug for existing tag
-          TAG_NAME="Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          # Debug for existing tag and ensure valid tag name
+          RAW_TAG_NAME="Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          TAG_NAME=$(echo "$RAW_TAG_NAME" | sed 's/[^a-zA-Z0-9_.-]/-/g')  # Replace invalid characters
+          
+          echo "Generated valid tag name: $TAG_NAME"
+
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             echo "Tag $TAG_NAME already exists. Deleting it..."
             git tag -d "$TAG_NAME"
@@ -92,8 +96,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: "Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
-          release_name: "Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          tag_name: ${{ steps.create_tag.outputs.tag_name }}
+          release_name: ${{ steps.create_tag.outputs.tag_name }}
           draft: false
           prerelease: false
 
