@@ -45,14 +45,16 @@ jobs:
       - name: Create release filename and tag
         id: release_meta
         run: |
-          TODAY=$(date +'%Y-%m-%d')
-          # Format nama file
-          #REL_NAME="Nikki-TProxy-${TODAY}-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
-          REL_NAME="Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
-          # Format tag name aman (hilangkan karakter ilegal jika ada)
-          SAFE_TAG=$(echo "$REL_NAME" | tr '~ ' '--')
+          VERSION="${{ steps.extract_version.outputs.version }}"
+      
+          # Hilangkan titik di awal jika ada
+          VERSION_CLEAN=$(echo "$VERSION" | sed 's/^\.//')
+      
+          REL_NAME="Nikki-TProxy-${VERSION_CLEAN}_${{ matrix.arch }}-${{ matrix.branch }}"
+          TAG_NAME=$(echo "$REL_NAME" | tr '~ ' '--')  # Bersihkan karakter ilegal (opsional)
+      
           echo "relname=$REL_NAME" >> $GITHUB_OUTPUT
-          echo "tagname=$SAFE_TAG" >> $GITHUB_OUTPUT
+          echo "tagname=$TAG_NAME" >> $GITHUB_OUTPUT
 
       - name: Compress .ipk files
         run: |
@@ -61,15 +63,22 @@ jobs:
           zip -j ${{ steps.release_meta.outputs.relname }}.zip output/*.ipk
 
       - name: Create empty commit and tag
+        env:
+          GIT_TAG: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
+          GIT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+      
           git fetch origin
           git checkout --orphan temp-release-branch
           git rm -rf .
           git commit --allow-empty -m "Empty commit for release"
-          git tag Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
-          git push origin Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
+      
+          git tag "$GIT_TAG"
+          
+          # Push tag using PAT (for private repo)
+          git push "https://${GIT_TOKEN}@github.com/${{ github.repository }}" "$GIT_TAG"
 
       - name: Create GitHub Release
         id: create_release
