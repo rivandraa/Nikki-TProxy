@@ -38,30 +38,34 @@ jobs:
           fi
           echo "Found package: $PKG_FILE"
           VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/')
-          echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Compress .ipk files
-        id: compress
+      - name: Prepare release name
+        id: prepare_release_name
         run: |
-          mkdir -p output
-          cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
           TODAY=$(date +'%Y-%m-%d')
-          FILENAME=Nikki-TProxy-${TODAY}-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
-          zip -j "$FILENAME" output/*.ipk
-          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
-
-      - name: Upload to artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.compress.outputs.filename }}
-          path: ${{ steps.compress.outputs.filename }}
+          # Contoh: Nikki-TProxy-2025-05-15-2025-05-13-v1.19.8-Mod-r1_aarch64_generic-openwrt-24.10
+          RELEASE_NAME="Nikki-TProxy-${TODAY}-${TODAY}-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "tag_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ steps.compress.outputs.filename }}
-          tag_name: ${{ steps.compress.outputs.filename }}
-          files: ${{ steps.compress.outputs.filename }}
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.prepare_release_name.outputs.tag_name }}
+          release_name: ${{ steps.prepare_release_name.outputs.release_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload ZIP to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: Nikki-TProxy-${{ steps.prepare_release_name.outputs.release_name }}.zip
+          asset_name: Nikki-TProxy-${{ steps.prepare_release_name.outputs.release_name }}.zip
+          asset_content_type: application/zip
