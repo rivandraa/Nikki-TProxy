@@ -1,0 +1,93 @@
+name: release-test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.arch }}-${{ matrix.branch }} build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - aarch64_generic
+        branch:
+          - openwrt-24.10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version info from Makefile
+        id: extract_version
+        run: |
+          MAKEFILE="package/feeds/nikki/luci-app-nikki/Makefile"
+
+          VERSION=$(grep PKG_VERSION $MAKEFILE | cut -d':=' -f2 | tr -d ' ')
+          RELEASE=$(grep PKG_RELEASE $MAKEFILE | cut -d':=' -f2 | tr -d ' ')
+          DATE=$(grep PKG_DATE $MAKEFILE | cut -d':=' -f2 | tr -d ' ' || date +%F)
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "revision=Mod-r$RELEASE" >> $GITHUB_OUTPUT
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+
+      - name: Build package
+        uses: openwrt/gh-action-sdk@main
+        env:
+          ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
+          FEEDNAME: nikki
+          PACKAGES: luci-app-nikki
+          NO_REFRESH_CHECK: true
+
+      - name: Upload raw artifacts (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nikki_${{ matrix.arch }}-${{ matrix.branch }}
+          path: bin/packages/${{ matrix.arch }}/nikki
+
+      - name: Compress .ipk files
+        run: |
+          mkdir -p output
+          cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
+          FILENAME=Nikki-TProxy-${{ steps.extract_version.outputs.date }}-v${{ steps.extract_version.outputs.version }}-${{ steps.extract_version.outputs.revision }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
+          zip -j "$FILENAME" output/*.ipk
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      - name: Create empty commit and tag
+        run: |
+          TAG_NAME=Nikki-TProxy-${{ steps.extract_version.outputs.date }}-v${{ steps.extract_version.outputs.version }}-${{ steps.extract_version.outputs.revision }}_${{ matrix.arch }}-${{ matrix.branch }}
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git fetch origin
+          git checkout --orphan temp-release-branch
+          git rm -rf .
+          git commit --allow-empty -m "Empty commit for release"
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          release_name: ${{ env.TAG_NAME }}
+          draft: false
+          prerelease: false
+
+      - name: Upload ZIP to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.FILENAME }}
+          asset_name: ${{ env.FILENAME }}
+          asset_content_type: application/zip
