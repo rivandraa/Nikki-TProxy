@@ -60,6 +60,17 @@ jobs:
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
           zip -j ${{ steps.release_meta.outputs.relname }}.zip output/*.ipk
 
+      - name: Create empty commit and tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git fetch origin
+          git checkout --orphan temp-release-branch
+          git rm -rf .
+          git commit --allow-empty -m "Empty commit for release"
+          git tag Nikki-TProxy-${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
+          git push origin Nikki-TProxy-${{ matrix.arch }}-${{ matrix.branch }}-${{ github.run_number }}
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
