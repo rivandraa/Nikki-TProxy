@@ -1,10 +1,10 @@
-name: build-packages-new-xx
+name: build-packages-new
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write  #Ini penting untuk akses Releases
+  contents: write  # Diperlukan untuk membuat GitHub Release
 
 jobs:
   build:
@@ -49,7 +49,7 @@ jobs:
           mkdir -p output
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
           ZIP_NAME=Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
-          zip -j $ZIP_NAME output/*.ipk
+          zip -j "$ZIP_NAME" output/*.ipk
           echo "zip_name=$ZIP_NAME" >> $GITHUB_ENV
 
       - name: Upload to artifact
@@ -59,6 +59,7 @@ jobs:
           path: ${{ env.zip_name }}
 
       - name: Create GitHub Release
+        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
