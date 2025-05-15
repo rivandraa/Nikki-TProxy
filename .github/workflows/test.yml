@@ -3,6 +3,9 @@ name: rilis-packages-new
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write  # dibutuhkan untuk membuat dan mengupload release
+  
 jobs:
   build:
     name: ${{ matrix.arch }}-${{ matrix.branch }} build
