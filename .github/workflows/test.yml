@@ -1,10 +1,7 @@
-name: release-packages-test
+name: build-packages-new
 
 on:
   workflow_dispatch:
-
-permissions:
-  contents: write  # Dibutuhkan untuk membuat dan mengupload release
 
 jobs:
   build:
@@ -44,71 +41,36 @@ jobs:
           echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Upload raw artifacts (optional)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}
-          path: bin/packages/${{ matrix.arch }}/nikki
-
       - name: Compress .ipk files
         run: |
           mkdir -p output
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
-          zip -j Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip output/*.ipk
+          ZIP_NAME=Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
+          zip -j $ZIP_NAME output/*.ipk
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_ENV
 
-      - name: Create and push Git tag
-        id: create_tag
-        run: |
-          set -e
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git fetch --tags
-
-          # Generate tag name
-          RAW_TAG_NAME="Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
-          TAG_NAME=$(echo "$RAW_TAG_NAME" | sed 's/[^a-zA-Z0-9_.-]/-/g')
-          echo "Generated valid tag name: $TAG_NAME"
-          echo "tag_name=$TAG_NAME" >> $GITHUB_ENV
-
-          # Delete remote tag if it exists
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
-            echo "⚠️ Tag $TAG_NAME already exists remotely. Deleting..."
-            git push --delete origin "$TAG_NAME"
-          fi
-
-          # Delete local tag if exists
-          if git tag | grep -q "^$TAG_NAME$"; then
-            git tag -d "$TAG_NAME"
-          fi
-
-          # Create orphan branch
-          git checkout --orphan temp-release-branch
-          git rm -rf .
-          git commit --allow-empty -m "Release: $TAG_NAME"
-          git tag -a "$TAG_NAME" -m "Version ${{ steps.extract_version.outputs.version }}"
-          git push origin "$TAG_NAME"
-
-          # Cleanup
-          git checkout main
-          git branch -D temp-release-branch
+      - name: Upload to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}
+          path: ${{ env.zip_name }}
 
       - name: Create GitHub Release
-        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.tag_name }}
-          release_name: ${{ env.tag_name }}
+          tag_name: v${{ steps.extract_version.outputs.version }}
+          release_name: Nikki TProxy ${{ steps.extract_version.outputs.version }}
           draft: false
           prerelease: false
 
-      - name: Upload ZIP to GitHub Release
+      - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
-          asset_name: Nikki-TProxy-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}.zip
+          asset_path: ./${{ env.zip_name }}
+          asset_name: ${{ env.zip_name }}
           asset_content_type: application/zip
