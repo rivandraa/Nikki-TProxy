@@ -1,7 +1,10 @@
-name: build-packages-xxxxxxxxxxx
+name: build-packages-new
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write  #Ini penting untuk akses Releases
 
 jobs:
   build:
