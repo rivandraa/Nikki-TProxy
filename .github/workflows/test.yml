@@ -40,7 +40,7 @@ jobs:
             exit 1
           fi
           echo "Found package: $PKG_FILE"
-          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/')
+          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/' | sed 's/~/-/g')
           echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
