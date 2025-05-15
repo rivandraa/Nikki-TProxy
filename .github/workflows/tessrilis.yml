@@ -25,7 +25,7 @@ jobs:
       - name: Extract version info from Makefile
         id: extract_version
         run: |
-          MAKEFILE="package/feeds/nikki/luci-app-nikki/Makefile"
+          MAKEFILE="package/feeds/nikki/Makefile"
 
           VERSION=$(grep PKG_VERSION $MAKEFILE | cut -d':=' -f2 | tr -d ' ')
           RELEASE=$(grep PKG_RELEASE $MAKEFILE | cut -d':=' -f2 | tr -d ' ')
