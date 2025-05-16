@@ -1,0 +1,27 @@
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=luci-app-nikki-full
+PKG_RELEASE:=1
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/luci-app-nikki-full
+  SECTION:=net
+  CATEGORY:=Network
+  TITLE:=Nikki full package (backend + luci)
+  DEPENDS:=+nikki +luci-app-nikki
+endef
+
+define Package/luci-app-nikki-full/description
+  Metapackage untuk install Nikki backend dan LuCI frontend sekaligus
+endef
+
+define Build/Compile
+  true
+endef
+
+define Package/luci-app-nikki-full/install
+  true
+endef
+
+$(eval $(call BuildPackage,luci-app-nikki-full))
