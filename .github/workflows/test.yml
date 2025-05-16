@@ -1,11 +1,11 @@
-name: rilis-packages-new
+name: tesssssssssssssssss
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # dibutuhkan untuk membuat dan mengupload release
-  
+  contents: write
+
 jobs:
   build:
     name: ${{ matrix.arch }}-${{ matrix.branch }} build
@@ -13,62 +13,68 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          - aarch64_generic
-        branch:
-          - openwrt-24.10
+        arch: [aarch64_generic]
+        branch: [openwrt-24.10]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build package
+      - name: Build package metapackage luci-app-nikki-full
         uses: openwrt/gh-action-sdk@main
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
           FEEDNAME: nikki
-          PACKAGES: luci-app-nikki
+          PACKAGES: luci-app-nikki-full   # <-- ganti ke metapackage
           NO_REFRESH_CHECK: true
 
       - name: Extract package version
         id: extract_version
         run: |
-          set -e
-          PKG_FILE=$(find bin/packages/${{ matrix.arch }}/nikki -name 'nikki_*.ipk' | head -n 1)
+          PKG_FILE=$(find bin/packages/${{ matrix.arch }}/nikki -name 'luci-app-nikki-full_*.ipk' | head -n 1)
           if [[ -z "$PKG_FILE" ]]; then
             echo "❌ Package file not found!"
             exit 1
           fi
-          echo "Found package: $PKG_FILE"
-          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(basename "$PKG_FILE" | sed -E 's/^luci-app-nikki-full_([^_]+)_.*\.ipk/\1/')
+          VERSION_CLEAN=$(echo "$VERSION" | sed 's/[^a-zA-Z0-9._-]//g' | sed 's/^\.//')
+          echo "version=$VERSION_CLEAN" >> $GITHUB_OUTPUT
 
-      - name: Prepare release name
-        id: prepare_release_name
+      - name: Create release name and tag
+        id: release_meta
         run: |
-          TODAY=$(date +'%Y-%m-%d')
-          # Contoh: Nikki-TProxy-2025-05-15-2025-05-13-v1.19.8-Mod-r1_aarch64_generic-openwrt-24.10
-          RELEASE_NAME="Nikki-TProxy-${TODAY}-${TODAY}-${{ steps.extract_version.outputs.version }}_${{ matrix.arch }}-${{ matrix.branch }}"
-          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
-          echo "tag_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          REL_NAME="Nikki-TProxy-${VERSION}_${{ matrix.arch }}-${{ matrix.branch }}"
+          TAG_NAME="${REL_NAME// /--}"
+          echo "relname=$REL_NAME" >> $GITHUB_OUTPUT
+          echo "tagname=$TAG_NAME" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.prepare_release_name.outputs.tag_name }}
-          release_name: ${{ steps.prepare_release_name.outputs.release_name }}
-          draft: false
-          prerelease: false
+      - name: Compress .ipk files into ZIP
+        run: |
+          mkdir -p output
+          cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
+          zip -j "${{ steps.release_meta.outputs.relname }}.zip" output/*.ipk
 
-      - name: Upload ZIP to GitHub Release
-        uses: actions/upload-release-asset@v1
+      - name: Push tag to GitHub
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_TAG: ${{ steps.release_meta.outputs.tagname }}
+          GIT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git fetch origin
+          git checkout --orphan temp-release-branch
+          git rm -rf .
+          git commit --allow-empty -m "Release $GIT_TAG"
+          git tag "$GIT_TAG"
+          git push "https://${GIT_TOKEN}@github.com/${{ github.repository }}" "$GIT_TAG"
+
+      - name: Create GitHub Release and upload ZIP
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: Nikki-TProxy-${{ steps.prepare_release_name.outputs.release_name }}.zip
-          asset_name: Nikki-TProxy-${{ steps.prepare_release_name.outputs.release_name }}.zip
-          asset_content_type: application/zip
+          tag_name: ${{ steps.release_meta.outputs.tagname }}
+          name: ${{ steps.release_meta.outputs.relname }}
+          files: ${{ steps.release_meta.outputs.relname }}.zip
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
