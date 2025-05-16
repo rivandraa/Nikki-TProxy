@@ -1,4 +1,4 @@
-name: release-nikki-tproxy
+name: release-nikki-tproxy-new
 
 on:
   workflow_dispatch:
