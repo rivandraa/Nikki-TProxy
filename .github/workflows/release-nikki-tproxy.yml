@@ -1,11 +1,11 @@
-name: release-nikki-tproxy-new
+name: release-nikki-tproxy
 
 on:
   workflow_dispatch:
-
+  
 permissions:
   contents: write
-
+  
 jobs:
   build:
     name: ${{ matrix.arch }}-${{ matrix.branch }} build
@@ -13,8 +13,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [aarch64_generic]
-        branch: [openwrt-24.10]
+        arch:
+          - aarch64_generic
+        branch:
+          - openwrt-24.10
 
     steps:
       - name: Checkout repository
@@ -28,53 +30,85 @@ jobs:
           PACKAGES: luci-app-nikki
           NO_REFRESH_CHECK: true
 
-      - name: Extract package version
-        id: extract_version
+      - name: Extract package versions
+        id: extract_versions
         run: |
-          PKG_FILE=$(find bin/packages/${{ matrix.arch }}/nikki -name 'nikki_*.ipk' | head -n 1)
-          if [[ -z "$PKG_FILE" ]]; then
-            echo "❌ Package file not found!"
+          set -e
+          # Cari ipk luci-app-nikki (frontend)
+          FRONTEND_IPK=$(find bin/packages/${{ matrix.arch }}/nikki -name 'luci-app-nikki_*.ipk' | head -n 1)
+          if [[ -z "$FRONTEND_IPK" ]]; then
+            echo "❌ luci-app-nikki package not found!"
             exit 1
           fi
-          VERSION=$(basename "$PKG_FILE" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/')
-          VERSION_CLEAN=$(echo "$VERSION" | sed 's/[^a-zA-Z0-9._-]//g' | sed 's/^\.//')
-          echo "version=$VERSION_CLEAN" >> $GITHUB_OUTPUT
+          FRONTEND_VER=$(basename "$FRONTEND_IPK" | sed -E 's/^luci-app-nikki_([^_]+)_.*\.ipk/\1/')
 
-      - name: Create release name and tag
+          # Cari ipk nikki (backend)
+          BACKEND_IPK=$(find bin/packages/${{ matrix.arch }}/nikki -name 'nikki_*.ipk' | head -n 1)
+          if [[ -z "$BACKEND_IPK" ]]; then
+            echo "❌ nikki package not found!"
+            exit 1
+          fi
+          BACKEND_VER=$(basename "$BACKEND_IPK" | sed -E 's/^nikki_([^_]+)_.*\.ipk/\1/')
+
+          # Bersihkan versi backend dari '-Mod-r1' jika ada (optional)
+          BACKEND_VER_CLEAN=$(echo "$BACKEND_VER" | sed 's/-Mod-r1//')
+
+          echo "frontend_version=$FRONTEND_VER" >> $GITHUB_OUTPUT
+          echo "backend_version=$BACKEND_VER_CLEAN" >> $GITHUB_OUTPUT
+
+      - name: Create release filename and tag
         id: release_meta
         run: |
-          VERSION="${{ steps.extract_version.outputs.version }}"
-          REL_NAME="Nikki-TProxy-${VERSION}_${{ matrix.arch }}-${{ matrix.branch }}"
-          TAG_NAME="${REL_NAME// /--}"
+          FRONTEND="${{ steps.extract_versions.outputs.frontend_version }}"
+          BACKEND="${{ steps.extract_versions.outputs.backend_version }}"
+          ARCH="${{ matrix.arch }}"
+          BRANCH="${{ matrix.branch }}"
+
+          REL_NAME="Nikki-TProxy-${FRONTEND}_${BACKEND}_${ARCH}-${BRANCH}"
+          TAG_NAME=$(echo "$REL_NAME" | tr '~ ' '--')
+
           echo "relname=$REL_NAME" >> $GITHUB_OUTPUT
           echo "tagname=$TAG_NAME" >> $GITHUB_OUTPUT
 
-      - name: Compress .ipk files into ZIP
+      - name: Compress .ipk files
         run: |
           mkdir -p output
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
-          zip -j "${{ steps.release_meta.outputs.relname }}.zip" output/*.ipk
+          zip -j ${{ steps.release_meta.outputs.relname }}.zip output/*.ipk
 
-      - name: Push tag to GitHub
+      - name: Create empty commit and tag
         env:
           GIT_TAG: ${{ steps.release_meta.outputs.tagname }}
           GIT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+
           git fetch origin
           git checkout --orphan temp-release-branch
           git rm -rf .
-          git commit --allow-empty -m "Release $GIT_TAG"
+          git commit --allow-empty -m "Empty commit for release"
+
           git tag "$GIT_TAG"
           git push "https://${GIT_TOKEN}@github.com/${{ github.repository }}" "$GIT_TAG"
 
-      - name: Create GitHub Release and upload ZIP
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.release_meta.outputs.tagname }}
-          name: ${{ steps.release_meta.outputs.relname }}
-          files: ${{ steps.release_meta.outputs.relname }}.zip
-          generate_release_notes: false
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tagname }}
+          release_name: ${{ steps.release_meta.outputs.relname }}
+          draft: false
+          prerelease: false
+
+      - name: Upload ZIP to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.release_meta.outputs.relname }}.zip
+          asset_name: ${{ steps.release_meta.outputs.relname }}.zip
+          asset_content_type: application/zip
