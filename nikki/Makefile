@@ -88,6 +88,15 @@ define Package/nikki/install
 	$(INSTALL_DATA) $(CURDIR)/files/nikki.upgrade $(1)/lib/upgrade/keep.d/nikki
 endef
 
+define Package/nikki/preinst
+#!/bin/sh
+[ -z "$$IPKG_INSTROOT" ] && {
+    rm -f /usr/share/luci/menu.d/luci-app-nikki.json
+    rm -rf /www/luci-static/resources/view/nikki
+}
+exit 0
+endef
+
 define Package/nikki/postrm
 #!/bin/sh
 # Hanya dijalankan jika bukan dalam proses image build (chroot)
