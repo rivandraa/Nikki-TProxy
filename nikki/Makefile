@@ -91,8 +91,16 @@ endef
 define Package/nikki/preinst
 #!/bin/sh
 [ -z "$$IPKG_INSTROOT" ] && {
-    rm -f /usr/share/luci/menu.d/luci-app-nikki.json
-    rm -rf /www/luci-static/resources/view/nikki
+    [ -f /etc/config/nikki ] && cp /etc/config/nikki /tmp/nikki_config_backup
+}
+exit 0
+endef
+
+define Package/nikki/postinst
+#!/bin/sh
+[ -z "$$IPKG_INSTROOT" ] && {
+    [ -f /tmp/nikki_config_backup ] && mv /tmp/nikki_config_backup /etc/config/nikki
+    rm -f /tmp/luci-indexcache /tmp/luci-modulecache/*
 }
 exit 0
 endef
