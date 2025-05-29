@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nikki
-PKG_RELEASE:=2
+PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
@@ -35,7 +35,7 @@ define Package/nikki
   CATEGORY:=Network
   TITLE:=A rule based proxy in Go.
   URL:=https://wiki.metacubex.one
-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +curl +yq firewall4 +ip-full \
+  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +curl +yq +firewall4 +ip-full \
            +kmod-inet-diag +kmod-nft-socket +kmod-nft-tproxy +kmod-tun
   PROVIDES:=nikki mihomo
 endef
@@ -43,8 +43,6 @@ endef
 define Package/nikki/conffiles
 /etc/config/nikki
 /etc/nikki/mixin.yaml
-/etc/nikki/nftables/reserved_ip.nft
-/etc/nikki/nftables/reserved_ip6.nft
 endef
 
 define Package/nikki/install
@@ -72,36 +70,6 @@ define Package/nikki/install
 	$(INSTALL_DATA) $(CURDIR)/files/nikki.upgrade $(1)/lib/upgrade/keep.d/nikki
 endef
 
-define Package/nikki/preinst
-#!/bin/sh
-[ -z "$$IPKG_INSTROOT" ] || exit 0
-
-# Backup konfigurasi nikki jika ada
-if [ -d /etc/nikki ]; then
-    mkdir -p /tmp/nikki_backup
-    cp -a /etc/nikki/* /tmp/nikki_backup/
-fi
-
-exit 0
-endef
-
-define Package/nikki/postinst
-#!/bin/sh
-[ -z "$$IPKG_INSTROOT" ] || exit 0
-
-# Kembalikan konfigurasi sebelumnya
-if [ -d /tmp/nikki_backup ]; then
-    cp -a /tmp/nikki_backup/* /etc/nikki/
-    rm -rf /tmp/nikki_backup
-fi
-
-# Bersihkan cache luci jika ada
-rm -f /tmp/luci-indexcache 2>/dev/null
-rm -f /tmp/luci-modulecache/* 2>/dev/null
-
-exit 0
-endef
-
 define Package/nikki/postrm
 #!/bin/sh
 [ -z "$$IPKG_INSTROOT" ] || exit 0
@@ -109,19 +77,6 @@ define Package/nikki/postrm
 # Hapus entri firewall jika ada
 uci -q delete firewall.nikki
 uci -q commit firewall
-
-# Bersihkan semua file dan direktori terkait
-rm -rf /etc/nikki
-rm -rf /www/luci-static/resources/view/nikki
-rm -rf /tmp/log/nikki
-
-rm -f /usr/share/luci/menu.d/luci-app-nikki.json
-rm -f /www/tinyfm/nikkifm.php
-rm -f /etc/config/nikki
-rm -f /etc/init.d/nikki
-rm -f /tmp/lock/procd_nikki.lock
-rm -f /tmp/run/nikki/profile.json
-
 exit 0
 endef
 
