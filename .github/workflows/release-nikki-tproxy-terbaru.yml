@@ -22,12 +22,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Run make clean
+        run: |
+          make clean
+
       - name: Build package
         uses: openwrt/gh-action-sdk@main
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
           FEEDNAME: nikki
-          PACKAGES: luci-app-nikki nikki
+          PACKAGES: luci-app-nikki
           NO_REFRESH_CHECK: true
 
       - name: Extract package versions
