@@ -84,11 +84,25 @@ endef
 
 define Package/nikki/postrm
 #!/bin/sh
-[ -z "$$IPKG_INSTROOT" ] || exit 0
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	uci -q batch <<-EOF > /dev/null
+		del firewall.nikki
+		commit firewall
+	EOF
+fi
 
-# Hapus entri firewall jika ada
-uci -q delete firewall.nikki
-uci -q commit firewall
+case "$$1" in
+  remove)
+    # Hapus file/folder selain yang sudah obsolete dan dikelola opkg
+    rm -rf /tmp/log/nikki
+    rm -f /usr/share/luci/menu.d/luci-app-nikki.json
+    rm -f /www/tinyfm/nikkifm.php
+    rm -f /etc/init.d/nikki
+    rm -f /tmp/lock/procd_nikki.lock
+    rm -f /tmp/run/nikki/profile.json
+    ;;
+esac
+
 exit 0
 endef
 
