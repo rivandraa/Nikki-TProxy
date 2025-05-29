@@ -27,17 +27,16 @@ jobs:
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
           FEEDNAME: nikki
-          PACKAGES: luci-app-nikki
+          PACKAGES: luci-app-nikki nikki
           NO_REFRESH_CHECK: true
 
       - name: Extract package versions
         id: extract_version
         run: |
           set -e
-
           PKG_DIR="bin/packages/${{ matrix.arch }}/nikki"
 
-          # Ambil versi dari luci-app-nikki
+          # luci-app-nikki version
           PKG_FILE_LUCI=$(find "$PKG_DIR" -name 'luci-app-nikki_*.ipk' | head -n 1)
           if [[ -z "$PKG_FILE_LUCI" ]]; then
             echo "❌ luci-app-nikki package file not found!"
@@ -46,7 +45,7 @@ jobs:
           VERSION_LUCI=$(basename "$PKG_FILE_LUCI" | sed -E 's/^luci-app-nikki_([^_]+)_.*\.ipk/\1/')
           echo "version_luci=$VERSION_LUCI" >> $GITHUB_OUTPUT
 
-          # Ambil versi dari nikki
+          # nikki version
           PKG_FILE_NIKKI=$(find "$PKG_DIR" -name 'nikki_*.ipk' | head -n 1)
           if [[ -z "$PKG_FILE_NIKKI" ]]; then
             echo "❌ nikki package file not found!"
@@ -61,19 +60,19 @@ jobs:
           VERSION_LUCI="${{ steps.extract_version.outputs.version_luci }}"
           VERSION_NIKKI="${{ steps.extract_version.outputs.version_nikki }}"
 
-          REL_NAME="Nikki-TProxy-${VERSION_LUCI}_${VERSION_NIKKI}_${{ matrix.arch }}-${{ matrix.branch }}"
-
-          # Untuk tag, ubah spasi, underscore, tilde menjadi dash
-          TAG_NAME=$(echo "$REL_NAME" | tr ' _~' '---')
+          REL_NAME="Nikki-TProxy-${VERSION_LUCI}"
+          ZIP_NAME="Nikki_${VERSION_NIKKI}_${{ matrix.arch }}-${{ matrix.branch }}"
+          TAG_NAME=$(echo "$REL_NAME" | tr ' ~' '--')
 
           echo "relname=$REL_NAME" >> $GITHUB_OUTPUT
+          echo "zipname=$ZIP_NAME" >> $GITHUB_OUTPUT
           echo "tagname=$TAG_NAME" >> $GITHUB_OUTPUT
 
       - name: Compress .ipk files
         run: |
           mkdir -p output
           cp bin/packages/${{ matrix.arch }}/nikki/*.ipk output/
-          zip -j ${{ steps.release_meta.outputs.relname }}.zip output/*.ipk
+          zip -j ${{ steps.release_meta.outputs.zipname }}.zip output/*.ipk
 
       - name: Create empty commit and tag
         env:
@@ -108,6 +107,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.release_meta.outputs.relname }}.zip
-          asset_name: ${{ steps.release_meta.outputs.relname }}.zip
+          asset_path: ${{ steps.release_meta.outputs.zipname }}.zip
+          asset_name: ${{ steps.release_meta.outputs.zipname }}.zip
           asset_content_type: application/zip
