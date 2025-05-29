@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nikki
-PKG_RELEASE:=3
+PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
@@ -84,26 +84,12 @@ endef
 
 define Package/nikki/postrm
 #!/bin/sh
-if [ -z "$${IPKG_INSTROOT}" ]; then
+if [ -z $${IPKG_INSTROOT} ]; then
 	uci -q batch <<-EOF > /dev/null
 		del firewall.nikki
 		commit firewall
 	EOF
 fi
-
-case "$$1" in
-  remove)
-    # Hapus file/folder selain yang sudah obsolete dan dikelola opkg
-    rm -rf /tmp/log/nikki
-    rm -f /usr/share/luci/menu.d/luci-app-nikki.json
-    rm -f /www/tinyfm/nikkifm.php
-    rm -f /etc/init.d/nikki
-    rm -f /tmp/lock/procd_nikki.lock
-    rm -f /tmp/run/nikki/profile.json
-    ;;
-esac
-
-exit 0
 endef
 
 define Build/Prepare
