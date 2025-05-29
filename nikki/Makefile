@@ -35,8 +35,7 @@ define Package/nikki
   CATEGORY:=Network
   TITLE:=A rule based proxy in Go.
   URL:=https://wiki.metacubex.one
-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +curl +yq firewall4 +ip-full \
-           +kmod-inet-diag +kmod-nft-socket +kmod-nft-tproxy +kmod-tun
+  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +curl +yq firewall4 +ip-full +kmod-inet-diag +kmod-nft-socket +kmod-nft-tproxy +kmod-tun
   PROVIDES:=nikki mihomo
 endef
 
@@ -47,23 +46,21 @@ endef
 define Package/nikki/conffiles
 /etc/config/nikki
 /etc/nikki/mixin.yaml
-/etc/nikki/nftables/reserved_ip.nft
-/etc/nikki/nftables/reserved_ip6.nft
 endef
 
 define Package/nikki/install
 	$(call GoPackage/Package/Install/Bin,$(1))
 
-	$(INSTALL_DIR) $(1)/etc/nikki \
-	               $(1)/etc/nikki/ucode \
-	               $(1)/etc/nikki/scripts \
-	               $(1)/etc/nikki/nftables \
-	               $(1)/etc/nikki/profiles \
-	               $(1)/etc/nikki/subscriptions \
-	               $(1)/etc/nikki/run \
-	               $(1)/etc/nikki/run/providers \
-	               $(1)/etc/nikki/run/providers/rule \
-	               $(1)/etc/nikki/run/providers/proxy
+	$(INSTALL_DIR) $(1)/etc/nikki
+	$(INSTALL_DIR) $(1)/etc/nikki/ucode
+	$(INSTALL_DIR) $(1)/etc/nikki/scripts
+	$(INSTALL_DIR) $(1)/etc/nikki/nftables
+	$(INSTALL_DIR) $(1)/etc/nikki/profiles
+	$(INSTALL_DIR) $(1)/etc/nikki/subscriptions
+	$(INSTALL_DIR) $(1)/etc/nikki/run
+	$(INSTALL_DIR) $(1)/etc/nikki/run/providers
+	$(INSTALL_DIR) $(1)/etc/nikki/run/providers/rule
+	$(INSTALL_DIR) $(1)/etc/nikki/run/providers/proxy
 
 	$(INSTALL_DATA) $(CURDIR)/files/mixin.yaml $(1)/etc/nikki/mixin.yaml
 
@@ -77,6 +74,8 @@ define Package/nikki/install
 
 	$(INSTALL_BIN) $(CURDIR)/files/nftables/reserved_ip.nft $(1)/etc/nikki/nftables/reserved_ip.nft
 	$(INSTALL_BIN) $(CURDIR)/files/nftables/reserved_ip6.nft $(1)/etc/nikki/nftables/reserved_ip6.nft
+	$(INSTALL_BIN) $(CURDIR)/files/nftables/geoip_cn.nft $(1)/etc/nikki/nftables/geoip_cn.nft
+	$(INSTALL_BIN) $(CURDIR)/files/nftables/geoip6_cn.nft $(1)/etc/nikki/nftables/geoip6_cn.nft
 
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) $(CURDIR)/files/nikki.conf $(1)/etc/config/nikki
@@ -84,45 +83,23 @@ define Package/nikki/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(CURDIR)/files/nikki.init $(1)/etc/init.d/nikki
 
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) $(CURDIR)/files/uci-defaults/firewall.sh $(1)/etc/uci-defaults/99_firewall_nikki
+	$(INSTALL_BIN) $(CURDIR)/files/uci-defaults/init.sh $(1)/etc/uci-defaults/99_init_nikki
+	$(INSTALL_BIN) $(CURDIR)/files/uci-defaults/migrate.sh $(1)/etc/uci-defaults/99_migrate_nikki
+
 	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
 	$(INSTALL_DATA) $(CURDIR)/files/nikki.upgrade $(1)/lib/upgrade/keep.d/nikki
 endef
 
-define Package/nikki/preinst
-#!/bin/sh
-[ -z "$$IPKG_INSTROOT" ] && {
-    [ -f /etc/config/nikki ] && cp /etc/config/nikki /tmp/nikki_config_backup
-}
-exit 0
-endef
-
-define Package/nikki/postinst
-#!/bin/sh
-[ -z "$$IPKG_INSTROOT" ] && {
-    [ -f /tmp/nikki_config_backup ] && mv /tmp/nikki_config_backup /etc/config/nikki
-    rm -f /tmp/luci-indexcache /tmp/luci-modulecache/*
-}
-exit 0
-endef
-
 define Package/nikki/postrm
 #!/bin/sh
-# Hanya dijalankan jika bukan dalam proses image build (chroot)
-if [ -z "$$IPKG_INSTROOT" ]; then
-	uci -q delete firewall.nikki
-	uci -q commit firewall
+if [ -z $${IPKG_INSTROOT} ]; then
+	uci -q batch <<-EOF > /dev/null
+		del firewall.nikki
+		commit firewall
+	EOF
 fi
-
-rm -rf /etc/nikki
-rm -rf /www/luci-static/resources/view/nikki
-rm -rf /tmp/log/nikki
-rm -f /usr/share/luci/menu.d/luci-app-nikki.json
-rm -f /www/tinyfm/nikkifm.php
-rm -f /etc/config/nikki
-rm -f /etc/init.d/nikki
-rm -f /tmp/lock/procd_nikki.lock
-rm -f /tmp/run/nikki/profile.json
-exit 0
 endef
 
 define Build/Prepare
