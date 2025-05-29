@@ -40,7 +40,8 @@ jobs:
             exit 1
           fi
           FILENAME=$(basename "$PKG_FILE")
-          VERSION=$(echo "$FILENAME" | sed -E 's/^nikki_([^_]+_[^_]+)_.*\.ipk/\1/')
+          # Ambil versi sebelum arsitektur dan branch
+          VERSION=$(echo "$FILENAME" | sed -E 's/^nikki-([^_]+)_.*\.ipk$/\1/')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create release filename and tag
