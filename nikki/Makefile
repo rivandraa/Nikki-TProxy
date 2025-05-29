@@ -88,18 +88,12 @@ define Package/nikki/install
 endef
 
 define Package/nikki/postrm
-if [ -z "$${IPKG_INSTROOT}" ]; then
+#!/bin/sh
+if [ -z $${IPKG_INSTROOT} ]; then
 	uci -q batch <<-EOF > /dev/null
 		del firewall.nikki
 		commit firewall
 	EOF
-
-	rm -rf /tmp/log/nikki
-	rm -f /usr/share/luci/menu.d/luci-app-nikki.json
-	rm -f /www/tinyfm/nikkifm.php
-	rm -f /etc/init.d/nikki
-	rm -f /tmp/lock/procd_nikki.lock
-	rm -f /tmp/run/nikki/profile.json
 fi
 endef
 
