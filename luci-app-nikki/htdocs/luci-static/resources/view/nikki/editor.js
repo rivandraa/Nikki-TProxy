@@ -73,10 +73,13 @@ return view.extend({
 
         return m.render();
     },
-    handleSaveApply: function (ev, mode) {
-        return this.handleSave(ev).finally(function () {
-            return mode === '0' ? nikki.reload() : nikki.restart();
+    handleSave: function(ev) {
+        return this.super('handleSave', [ev]).finally(() => {
+            if (typeof nikki === 'object') {
+                return (this.mode === '0') ? nikki.reload() : nikki.restart();
+            }
         });
     },
+    handleSaveApply: null,
     handleReset: null
 });
